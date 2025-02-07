@@ -4,7 +4,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from crud_functions import *
+from crud_func_5 import *
 import asyncio
 
 api = ""
@@ -20,7 +20,10 @@ kb1 = ReplyKeyboardMarkup(
             KeyboardButton(text='Рассчитать'),
             KeyboardButton(text='Информация'),
         ],
-        [KeyboardButton(text='Купить')]
+        [
+            KeyboardButton(text='Купить'),
+            KeyboardButton(text='Регистрация')
+        ]
     ], resize_keyboard=True
 )
 
@@ -30,8 +33,6 @@ kb2 = InlineKeyboardMarkup(
         [InlineKeyboardButton(text='Формулы расчёта', callback_data='formulas')]
     ]
 )
-
-
 
 kb3 = InlineKeyboardMarkup(
     inline_keyboard=[
@@ -100,6 +101,40 @@ async def send_calories(message, state):
     cal = 10 * float(data['weight']) + 6.25 * float(data['growth']) - 5 * float(data['age']) + 5
     await message.answer(f'Ваша норма калорий {cal}')
     await state.finish()
+
+class RegistrationState(StatesGroup):
+    username = State()
+    email = State()
+    age = State()
+
+@dp.message_handler(text=["Регистрация"])
+async def sing_up(message):
+    await message.answer("Введите имя пользователя (только латинский алфавит):")
+    await RegistrationState.username.set()
+
+@dp.message_handler(state=RegistrationState.username)
+async def set_username(message, state):
+    if is_included(message.text):
+        await message.answer("Пользователь существует, введите другое имя")
+        return
+    await state.update_data(username=message.text)
+    await message.answer("Введите свой email:")
+    await RegistrationState.email.set()
+
+@dp.message_handler(state=RegistrationState.email)
+async def set_email(message, state):
+    await state.update_data(email=message.text)
+    await message.answer("Введите свой возраст:")
+    await RegistrationState.age.set()
+
+@dp.message_handler(state=RegistrationState.age)
+async def set_age(message, state):
+    await state.update_data(age=message.text)
+    data = await state.get_data()
+    add_user(data['username'], data['email'], data['age'])
+    await message.answer(f"Регистрация прошла успешно!")
+    await state.finish()
+
 
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
